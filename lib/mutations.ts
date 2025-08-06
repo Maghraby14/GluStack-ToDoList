@@ -63,22 +63,37 @@ export const createUserRecord = async ({
   
 };
 export const addTasks = async ({
-  userId , 
-  listId, 
-  taskName, 
-  taskDescription, 
+  userId,
+  listId,
+  taskTitle,
+  taskDescription,
+ 
   taskDueDate,
-  
-}:{
+
+}: {
   userId: string;
   listId: string;
-  taskName: string;
+  taskTitle: string;
   taskDescription: string;
   taskDueDate: Date;
-  
-})=>{
+}) => {
+  const { data, error } = await supabase.from("tasks").insert([
+    {
+      todo_list_id: listId,
+      title: taskTitle,
+      description: taskDescription,
+      status: 'pending',
+      due_date: taskDueDate.toISOString(),
+      favorite: false,
+    },
+  ]).select("*");
 
-}
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+};
 export const createTaskList = async ({
   userId,
   listName,

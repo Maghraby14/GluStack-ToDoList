@@ -1,6 +1,6 @@
 
 
-import { Platform, StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 
 import { ThemedText } from '@/components/ThemedText';
@@ -9,34 +9,32 @@ import { ThemedText } from '@/components/ThemedText';
 import {
   Modal,
   ModalBackdrop,
-  ModalContent,
-  ModalCloseButton,
-  ModalHeader,
   ModalBody,
+  ModalContent,
   ModalFooter,
-} from "@/components/ui/modal"
+  ModalHeader
+} from "@/components/ui/modal";
 
-import { Button,ButtonGroup,ButtonIcon,ButtonSpinner,ButtonText } from '@/components/ui/button';
-import MyScrollView from '@/components/MyScrollView';
 import { HomeButton } from '@/components/HomeButton';
-import { AddIcon, BellIcon, CalendarDaysIcon, CheckCircleIcon, ChevronRightIcon, InfoIcon,MoonIcon,SearchIcon,ShareIcon, StarIcon } from '@/components/ui/icon';
-import { HStack } from '@/components/ui/hstack';
-import { Center } from '@/components/ui/center';
-import { Input, InputField, InputIcon, InputSlot } from '@/components/ui/input';
-import { VStack } from '@/components/ui/vstack';
-import { Heading } from '@/components/ui/heading';
-import { router } from 'expo-router';
-import React, { useState } from "react"
+import MyScrollView from '@/components/MyScrollView';
 import SelectItemGlu from '@/components/selectitemglu';
-import { useAuthStore } from '@/store/authCtx';
-import { Controller, useForm } from 'react-hook-form';
-import { useMutation } from '@tanstack/react-query';
-import {  addTasks, createTaskList } from '@/lib/mutations';
+import { Button, ButtonGroup, ButtonIcon, ButtonText } from '@/components/ui/button';
+import { Center } from '@/components/ui/center';
+import { Heading } from '@/components/ui/heading';
+import { HStack } from '@/components/ui/hstack';
+import { AddIcon, BellIcon, CalendarDaysIcon, CheckCircleIcon, ChevronRightIcon, MoonIcon, SearchIcon, StarIcon } from '@/components/ui/icon';
+import { Input, InputField, InputIcon, InputSlot } from '@/components/ui/input';
 import { Textarea, TextareaInput } from '@/components/ui/textarea';
+import { addTasks, createTaskList } from '@/lib/mutations';
+import { useAuthStore } from '@/store/authCtx';
+import { useMutation } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import React, { useState } from "react";
+import { Controller, useForm } from 'react-hook-form';
 export default function HomeScreen() {
   const [addList, setaddList] = React.useState(false)
   const [addReminder, setaddReminder] = React.useState(false)
-   const { taskLists,addTaskList,userId } = useAuthStore();
+   const { taskLists,addTaskList,userId,setTaskLists } = useAuthStore();
    const [errorMessage, setErrorMessage] = useState<string | null>(null);
    type AddListData = {
     listName: string;
@@ -77,13 +75,14 @@ export default function HomeScreen() {
   };
   type TaskData ={
     taskName: string;
-    date: Date | string; 
+    date:  string; 
     time: string;
     description: string;
     listName: string;
   };
   const {
     control: taskControl,
+    reset:resetTaskFrom,
     handleSubmit: handleTaskSubmit,
     formState: { errors: taskErrors },
   } = useForm<TaskData>({
@@ -95,16 +94,44 @@ export default function HomeScreen() {
       listName: "",
     },
   });
-  // const addTask = useMutation({
-  //   mutationFn: addTasks => {
-  //     },
-  //   onSuccess: () => {
-  //     console.log("Task added successfully");
-  //   },
-  //   onError: (error: any) => {
-  //     console.error("Failed to add task", error.message);
-  //   },
-  // });
+  const addTask = useMutation({
+    mutationFn: addTasks,
+    onSuccess: async (data) => {
+      console.log("Task added successfully:", data);
+      // Optionally, you can update the local state here if needed
+      
+      
+    },
+    onError: (error: any) => {
+      console.log("Failed to add task", error.message);
+      setErrorMessage("Failed to add task"); // Make sure setErrorMessage exists
+    },
+
+  });
+  const onTaskSubmit = (data: TaskData) => {
+    if (userId) {
+      const listId= taskLists.find(list => list.name === data.listName)?.id || "";
+      const taskDueDate = new Date(`${data.date}T${data.time}`); // Assuming date is in 'dd-mm-yyyy' format and time in 'hh:mm' format
+if(listId && taskDueDate)
+{
+  
+  addTask.mutate({
+    userId, // ensure userId is defined in your component
+    listId, // ensure listId is defined in your component
+    taskTitle: data.taskName,
+    taskDescription: data.description,
+    taskDueDate, // Ensure this is a Date object
+  });
+}
+      
+
+      console.log("Task went to database:");
+
+    } else {
+      console.error("userId is null. Cannot add a task.");
+    }
+    resetTaskFrom(); 
+  };
 
   
   return (
@@ -236,45 +263,88 @@ export default function HomeScreen() {
           </ModalHeader>
           <ModalBody>
             <Center>
-            <Input
-            variant="outline"
-      size="md"
-      isDisabled={false}
-      isInvalid={false}
-      isReadOnly={false}
-    >
-      <InputField placeholder="Enter Reminder Name" />
+            <Controller control={taskControl} rules={{ required: true }} name="taskName" render={({ field: { onChange, onBlur, value } }) => (
+              <Input
+                variant="outline"
+                size="md"
+                isDisabled={false}
+                isInvalid={!!taskErrors.taskName}
+                isReadOnly={false}
+              >
+                <InputField placeholder="Enter Task Name" onBlur={onBlur} onChangeText={onChange} value={value} />
               </Input>
+            )}/>
+            {taskErrors.taskName && <ThemedText>This is required.</ThemedText>}
             </Center>
             <Center>
+              <Controller 
+             control={taskControl} 
+             rules={{ required: true }} 
+             name="date" 
+             render={({ field: { onChange, onBlur, value } }) => (
+
             <Input
             variant="outline"
       size="md"
       isDisabled={false}
-      isInvalid={false}
+      isInvalid={!!taskErrors.date}
       isReadOnly={false}
     >
-      <InputField placeholder="Date (dd-mm-yyyy)" type='text' />
+      <InputField placeholder="Date (yyyy-mm-dd)" onBlur={onBlur} onChangeText={onChange} value={value} />
               </Input>
+            )}/>
+            {taskErrors.date && <ThemedText>This is required.</ThemedText>}
             </Center>
                  
                 
 
                <Center>
+              <Controller
+              control={taskControl}
+              rules={{ required: true }}
+              name="time"
+              render={({ field: { onChange, onBlur, value } }) => (
+
                <Input
             variant="outline"
       size="md"
       isDisabled={false}
-      isInvalid={false}
+      isInvalid={!!taskErrors.time}
       isReadOnly={false}
     >
-      <InputField placeholder="Time 24-hr Format (hh-mm)" />
+      <InputField placeholder="Time 24-hr Format (hh-mm)" 
+      onBlur={onBlur} onChangeText={onChange} value={value}/>
               </Input>
+              )}/>
+              {taskErrors.time && <ThemedText>This is required.</ThemedText>}
+
                </Center>
-               <Textarea size="md" isReadOnly={false} isInvalid={false} isDisabled={false}>
-               <TextareaInput placeholder="Task Description ..." />
+                <Controller
+              control={taskControl}
+              rules={{ required: true }}
+              name='description'
+              render={({ field: { onChange, onBlur, value } }) => (
+               
+                <Textarea size="md" isReadOnly={false} isInvalid={!!taskErrors.description} isDisabled={false}>
+               <TextareaInput placeholder="Task Description ..."  onBlur={onBlur} onChangeText={onChange} value={value}/>
                </Textarea>
-               <SelectItemGlu  />
+              )}
+            />
+            {taskErrors.description && <ThemedText>This is required.</ThemedText>}
+
+            <Controller
+              control={taskControl}
+              rules={{ required: true }}
+              name='listName'
+              render={({ field: { onChange, onBlur, value } }) => (
+                <SelectItemGlu 
+                isValid={!!taskErrors.listName} onBlur={onBlur} onChange={onChange} value={value} />
+                
+              )}
+            />
+            {taskErrors.listName && <ThemedText>This is required.</ThemedText>}
+               
+               
                
               
              
@@ -292,9 +362,12 @@ export default function HomeScreen() {
               <ButtonText>Cancel</ButtonText>
             </Button>
             <Button
-              onPress={() => {
-                setaddReminder(false)
-              }}
+              onPress={handleTaskSubmit((data) => {
+                onTaskSubmit(data);     
+                setaddReminder(false);  
+              })}
+
+              
             >
               <ButtonText>Add</ButtonText>
             </Button>
