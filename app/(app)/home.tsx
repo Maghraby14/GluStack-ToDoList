@@ -1,6 +1,6 @@
 
 
-import { StyleSheet } from 'react-native';
+import { KeyboardAvoidingView, StyleSheet } from 'react-native';
 
 
 import { ThemedText } from '@/components/ThemedText';
@@ -27,15 +27,21 @@ import { Input, InputField, InputIcon, InputSlot } from '@/components/ui/input';
 import { Textarea, TextareaInput } from '@/components/ui/textarea';
 import { addTasks, createTaskList } from '@/lib/mutations';
 import { useAuthStore } from '@/store/authCtx';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import React, { useState } from "react";
 import { Controller, useForm } from 'react-hook-form';
+import { Platform } from 'react-native';
 export default function HomeScreen() {
   const [addList, setaddList] = React.useState(false)
   const [addReminder, setaddReminder] = React.useState(false)
    const { taskLists,addTaskList,userId,setTaskLists } = useAuthStore();
    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+   const [showDatePicker, setShowDatePicker] = useState(false);
+const [showTimePicker, setShowTimePicker] = useState(false);
+const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+const [selectedTime, setSelectedTime] = useState<Date | null>(null);
    type AddListData = {
     listName: string;
   };
@@ -82,7 +88,9 @@ export default function HomeScreen() {
   };
   const {
     control: taskControl,
+    setValue,
     reset:resetTaskFrom,
+    
     handleSubmit: handleTaskSubmit,
     formState: { errors: taskErrors },
   } = useForm<TaskData>({
@@ -98,7 +106,25 @@ export default function HomeScreen() {
     mutationFn: addTasks,
     onSuccess: async (data) => {
       console.log("Task added successfully:", data);
-      // Optionally, you can update the local state here if needed
+      const newTask = {
+        id: data[0].id,
+        name: data[0].title,
+        dateTime: data[0].due_date,
+        completed: data[0].status != 'pending', // Assuming 'completed' is a valid status
+        favorite: data[0].favorite,
+      };
+      
+      const listId = data[0].todo_list_id;
+      const updatedLists = taskLists.map((list) =>
+        list.id === listId
+          ? { ...list, tasks: [...list.tasks, newTask] }
+          : list
+      );
+      
+      setTaskLists(
+       updatedLists // Update the taskLists state with the new task
+      
+      );
       
       
     },
@@ -130,6 +156,7 @@ if(listId && taskDueDate)
     } else {
       console.error("userId is null. Cannot add a task.");
     }
+    
     resetTaskFrom(); 
   };
 
@@ -246,6 +273,7 @@ if(listId && taskDueDate)
             <ButtonText>New Reminder</ButtonText>
           </HStack>
         </Button>
+        <KeyboardAvoidingView behavior='position' style={{ flex: 1 }}>
         <Modal
         isOpen={addReminder}
         onClose={() => {
@@ -276,49 +304,80 @@ if(listId && taskDueDate)
             )}/>
             {taskErrors.taskName && <ThemedText>This is required.</ThemedText>}
             </Center>
-            <Center>
-              <Controller 
-             control={taskControl} 
-             rules={{ required: true }} 
-             name="date" 
-             render={({ field: { onChange, onBlur, value } }) => (
+  
+  <Center>
+    <HStack style={{justifyContent:'space-around'}} space='4xl' >
+    <Button onPress={() => setShowDatePicker(true)} style={{flex:1}}>
+    <ButtonText>
+      {selectedDate ? selectedDate.toDateString() : 'Pick a Date'}
+    </ButtonText>
+  </Button>
 
-            <Input
-            variant="outline"
-      size="md"
-      isDisabled={false}
-      isInvalid={!!taskErrors.date}
-      isReadOnly={false}
-    >
-      <InputField placeholder="Date (yyyy-mm-dd)" onBlur={onBlur} onChangeText={onChange} value={value} />
-              </Input>
-            )}/>
-            {taskErrors.date && <ThemedText>This is required.</ThemedText>}
-            </Center>
+  <Button onPress={() => setShowDatePicker(false)} action='positive'>
+    <ButtonText>
+      {'Done'}
+    </ButtonText>
+  </Button>
+
+    </HStack>
+  
+
+  {showDatePicker && (
+    <DateTimePicker
+      mode="date"
+      value={selectedDate || new Date()}
+      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+      onChange={(event, date) => {
+        
+        if (date) {
+          setSelectedDate(date);
+          setValue('date', date.toISOString().split('T')[0]);
+        }
+      }}
+    />
+  )}
+  {taskErrors.date && <ThemedText>This is required.</ThemedText>}
+</Center>
+<Center>
+  <HStack style={{justifyContent:'space-around'}} space='4xl'>
+  <Button onPress={() => setShowTimePicker(true)} style={{flex:1}}>
+    <ButtonText>
+      {selectedTime ? selectedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Pick a Time'}
+    </ButtonText>
+  </Button>
+  <Button onPress={() => setShowTimePicker(false)} action='positive'>
+    <ButtonText>
+      {'Done'}
+    </ButtonText>
+  </Button>
+  </HStack>
+  
+
+  {showTimePicker && (
+    <DateTimePicker
+      mode="time"
+      value={selectedTime || new Date()}
+      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+      onChange={(event, time) => {
+        
+        if (time) {
+          setSelectedTime(time);
+          setValue('time', time.toTimeString().split(' ')[0].slice(0,5)); // hh:mm
+        }
+      }}
+    />
+  )}
+  {taskErrors.time && <ThemedText>This is required.</ThemedText>}
+</Center>
+            
+  
+
+            
                  
                 
 
-               <Center>
-              <Controller
-              control={taskControl}
-              rules={{ required: true }}
-              name="time"
-              render={({ field: { onChange, onBlur, value } }) => (
 
-               <Input
-            variant="outline"
-      size="md"
-      isDisabled={false}
-      isInvalid={!!taskErrors.time}
-      isReadOnly={false}
-    >
-      <InputField placeholder="Time 24-hr Format (hh-mm)" 
-      onBlur={onBlur} onChangeText={onChange} value={value}/>
-              </Input>
-              )}/>
-              {taskErrors.time && <ThemedText>This is required.</ThemedText>}
 
-               </Center>
                 <Controller
               control={taskControl}
               rules={{ required: true }}
@@ -357,6 +416,8 @@ if(listId && taskDueDate)
               action="secondary"
               onPress={() => {
                 setaddReminder(false)
+                setSelectedDate(null);
+                setSelectedTime(null);
               }}
             >
               <ButtonText>Cancel</ButtonText>
@@ -364,7 +425,11 @@ if(listId && taskDueDate)
             <Button
               onPress={handleTaskSubmit((data) => {
                 onTaskSubmit(data);     
-                setaddReminder(false);  
+                 
+                setSelectedDate(null);
+                setSelectedTime(null);
+                setaddReminder(false); 
+
               })}
 
               
@@ -373,7 +438,10 @@ if(listId && taskDueDate)
             </Button>
           </ModalFooter>
         </ModalContent>
-      </Modal>
+        </Modal>
+        </KeyboardAvoidingView>
+        
+      
      
       
       <ThemedText type="title" >
@@ -384,7 +452,18 @@ if(listId && taskDueDate)
       {
         taskLists.map(task =>{
           return (
-            <Button action='secondary' style={{justifyContent:'space-between'}} key={task.id}>
+            <Button action='secondary' style={{justifyContent:'space-between'}} key={task.id}
+            onPress={() => {
+              
+              router.push({
+                pathname: '/reminder',
+                params: {
+                  title: `${task.name}`,
+                  reminders: JSON.stringify(task.tasks),
+                },
+              });
+            }}
+            >
             <HStack  space='lg' style={{justifyContent:'space-between'}}>
             <ButtonIcon as={MoonIcon} size='lg'/>
             <ButtonText>{task.name}</ButtonText>

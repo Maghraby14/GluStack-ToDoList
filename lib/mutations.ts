@@ -62,8 +62,24 @@ export const createUserRecord = async ({
  
   
 };
+export const getTasks = async ({
+  listId,
+}: {
+  listId: string;
+}) => {
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("*")
+    .eq("todo_list_id", listId);
+
+  if (error) {
+    throw new Error(`Failed to fetch tasks: ${error.message}`);
+  }
+
+  return data;
+};
+
 export const addTasks = async ({
-  userId,
   listId,
   taskTitle,
   taskDescription,

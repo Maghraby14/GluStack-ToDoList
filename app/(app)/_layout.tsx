@@ -1,6 +1,6 @@
-import { Stack } from 'expo-router';
-import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { Stack } from 'expo-router';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -30,6 +30,14 @@ export default function RootLayout() {
         options={{
          
           presentation: 'modal', 
+          headerShown: true,
+        }}
+      />
+      <Stack.Screen
+        name="reminder"
+        options={{
+         
+           
           headerShown: true,
         }}
       />

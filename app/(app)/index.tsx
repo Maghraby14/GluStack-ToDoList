@@ -1,17 +1,17 @@
-import { StyleSheet } from 'react-native';
-import { useForm, Controller } from "react-hook-form"
+import { MyAlert } from '@/components/MyAlert';
+import { MyButton } from '@/components/MyButton';
 import MyScrollView from '@/components/MyScrollView';
+import { RegisterAvatar } from '@/components/RegisterAvatar';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { MyButton } from '@/components/MyButton';
 import { Input, InputField } from '@/components/ui/input';
-import { useMutation } from '@tanstack/react-query';
-import {  findUserRecord, getTaskLists } from '@/lib/mutations';
-import { MyAlert } from '@/components/MyAlert';
-import {useState} from 'react';
-import { RegisterAvatar } from '@/components/RegisterAvatar';
-import { Link, router } from 'expo-router';
+import { findUserRecord, getTaskLists, getTasks } from '@/lib/mutations';
 import { useAuthStore } from '@/store/authCtx';
+import { useMutation } from '@tanstack/react-query';
+import { Link, router } from 'expo-router';
+import { useState } from 'react';
+import { Controller, useForm } from "react-hook-form";
+import { StyleSheet } from 'react-native';
 export default function LoginScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { setUserId ,setTaskLists} = useAuthStore();
@@ -33,19 +33,31 @@ export default function LoginScreen() {
       const createUser =  useMutation({
         mutationFn: findUserRecord,
         onSuccess: async (data) => {
-         console.log('Success', 'User found Succesfully');
+          console.log('Success', 'User found successfully');
           setUserId(data.id);
-          try{
-            const userdata = await getTaskLists({userId:data.id});
-            setTaskLists(userdata.map((list:any) => ({ name: list.title, id: list.id, tasks: [] })));
-            
+        
+          try {
+            const taskLists = await getTaskLists({ userId: data.id });
+            console.log('Fetched Task Lists:', taskLists);
+        
+            // Fetch tasks for each list in parallel
+            const enrichedLists = await Promise.all(
+              taskLists.map(async (list: any) => {
+                const tasks = await getTasks({ listId: list.id });
+                return {
+                  name: list.title,
+                  id: list.id,
+                  tasks: tasks ?? [],
+                };
+              })
+            );
+        
+            setTaskLists(enrichedLists);
+          } catch (error) {
+            console.error('Failed to fetch user data', error);
           }
-          catch(error) {
-            console.error("Failed to fetch user data", error);
-          }
-          
-         
-          router.replace(('/home'));
+        
+          router.replace('/home');
         },
         onError: (error: any) => {
           console.log('Login Failed', error.message);
