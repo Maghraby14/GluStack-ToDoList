@@ -180,19 +180,78 @@ if(listId && taskDueDate)
       
       <Center>
       <HStack space='2xl' >
-      <HomeButton icon={CalendarDaysIcon} label="Today        " count={0} onPress={() => router.push({ pathname: "/(app)/list", params: { title: "Today" } })} />
-      <HomeButton icon={BellIcon} label="Scheduled" count={0} onPress={() => router.push({ pathname: "/(app)/list", params: { title: "Scheduled" } })} />
+      <HomeButton 
+  icon={CalendarDaysIcon} 
+  label="Today" 
+  count={
+    (() => {
+      const today = new Date();
+      const todayTasks = taskLists
+        .flatMap(list => list.tasks)
+        .filter(task => {
+          const taskDate = new Date(task.dateTime);
+          return (
+            taskDate.getFullYear() === today.getFullYear() &&
+            taskDate.getMonth() === today.getMonth() &&
+            taskDate.getDate() === today.getDate()
+          );
+        });
+      return todayTasks.length;
+    })()
+  } 
+  onPress={() => router.push({ pathname: "/(app)/list", params: { title: "Today" } })} 
+/>
+<HomeButton 
+  icon={BellIcon} 
+  label="Scheduled" 
+  count={
+    (() => {
+      const today = new Date();
+      const scheduledTasks = taskLists
+        .flatMap(list => list.tasks)
+        .filter(task => {
+          const taskDate = new Date(task.dateTime);
+          return !(
+            taskDate.getFullYear() === today.getFullYear() &&
+            taskDate.getMonth() === today.getMonth() &&
+            taskDate.getDate() === today.getDate()
+          );
+        });
+      return scheduledTasks.length;
+    })()
+  }
+  onPress={() => router.push({ pathname: "/(app)/list", params: { title: "Scheduled" } })} 
+/>
+
       </HStack>
       </Center>
       <Center>
       <HStack space='2xl'>
-      <HomeButton icon={CheckCircleIcon} label="All             " count={0} onPress={() => router.push({ pathname: "/(app)/list", params: { title: "All" } })} />
-      <HomeButton icon={StarIcon} label="Favorites" count={0} onPress={() => router.push({ pathname: "/(app)/list", params: { title: "Favorites" } })} />
+      <HomeButton 
+  icon={CheckCircleIcon} 
+  label="All" 
+  count={
+    (() => {
+      const allTasks = taskLists.flatMap(list => list.tasks);
+      return allTasks.length;
+    })()
+  }
+  onPress={() => router.push({ pathname: "/(app)/list", params: { title: "All" } })} 
+/>
+
+      <HomeButton icon={StarIcon} label="Favorites" count={
+        
+          (() => {
+            const allTasks = taskLists.flatMap(list => list.tasks);
+            return allTasks.length;
+          })()
+        
+      } onPress={() => router.push({ pathname: "/(app)/list", params: { title: "Favorites" } })} />
       </HStack>
       </Center>
       <Center>
       <HStack space='2xl'>
-      <HomeButton icon={CalendarDaysIcon} label="Completed" count={0} onPress={() => router.push({ pathname: "/(app)/list", params: { title: "Completed" } })} />
+      <HomeButton icon={CalendarDaysIcon} label="Completed" count={1} onPress={() => router.push({ pathname: "/(app)/list", params: { title: "Completed" } })} />
       <Center>
       <HomeButton icon={AddIcon} label="Add List"  onPress={() => {
         setaddList(true)
@@ -217,7 +276,7 @@ if(listId && taskDueDate)
           <Controller 
   control={control}
   rules={{ required: true }}
-  name="listName" // ❗ FIXED (was: name:'listName')
+  name="listName"
   render={({ field: { onChange, onBlur, value } }) => (
     <Input
       variant="outline"
@@ -332,6 +391,7 @@ if(listId && taskDueDate)
         if (date) {
           setSelectedDate(date);
           setValue('date', date.toISOString().split('T')[0]);
+          setShowDatePicker(false);
         }
       }}
     />
@@ -363,6 +423,7 @@ if(listId && taskDueDate)
         if (time) {
           setSelectedTime(time);
           setValue('time', time.toTimeString().split(' ')[0].slice(0,5)); // hh:mm
+          setShowTimePicker(false);
         }
       }}
     />

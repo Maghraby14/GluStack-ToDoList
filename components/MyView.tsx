@@ -23,7 +23,7 @@ export default function MyViewContainer({ children, headerBackgroundColor }: Pro
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-     // adjust as needed
+     
     width: '100%',
   },
   content: {

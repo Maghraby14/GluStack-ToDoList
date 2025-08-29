@@ -151,7 +151,23 @@ export const getTaskLists = async ({
   return data;
 };
 
+export const deleteTask = async ({
+  taskId,
+}: {
+  taskId: string;
+}) => {
+  const { data, error } = await supabase
+    .from("tasks")
+    .delete()
+    .eq("id", taskId)
+    .select(); // returns deleted rows
 
+  if (error) {
+    throw new Error(`Failed to delete task: ${error.message}`);
+  }
+
+  return data;
+};
 
 export const findUserRecord = async ({
   username,
